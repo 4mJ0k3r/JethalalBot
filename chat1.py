@@ -28,11 +28,101 @@ st.markdown("""
         font-size: 1.2rem;
         margin-bottom: 2rem;
     }
+    .api-key-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 2rem;
+        background-color: #f8f9fa;
+        border-radius: 10px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
 </style>
 """, unsafe_allow_html=True)
 
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+def validate_openai_key(api_key):
+    """Validate OpenAI API key by making a simple API call"""
+    try:
+        client = OpenAI(api_key=api_key)
+        # Make a minimal API call to test the key
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": "Hello"}],
+            max_tokens=5
+        )
+        return True, "API key is valid!"
+    except Exception as e:
+        error_msg = str(e)
+        if "incorrect_api_key" in error_msg or "invalid_api_key" in error_msg:
+            return False, "Invalid API key. Please check your key and try again."
+        elif "insufficient_quota" in error_msg:
+            return False, "API key is valid but has insufficient quota/credits."
+        else:
+            return False, f"Error validating API key: {error_msg}"
 
+# Initialize session state
+if "api_key_validated" not in st.session_state:
+    st.session_state.api_key_validated = False
+if "openai_api_key" not in st.session_state:
+    st.session_state.openai_api_key = ""
+
+# API Key Validation Screen
+if not st.session_state.api_key_validated:
+    st.markdown('<div class="main-header">🏪 Jethalal Bot</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sub-header">Please enter your OpenAI API key to continue</div>', unsafe_allow_html=True)
+    
+    with st.container():
+        st.markdown('<div class="api-key-container">', unsafe_allow_html=True)
+        
+        st.markdown("### 🔑 OpenAI API Key Required")
+        st.markdown("To chat with Jethalal, you need to provide your OpenAI API key.")
+        
+        # Try to load from environment first
+        env_key = os.getenv("OPENAI_API_KEY", "")
+        
+        api_key = st.text_input(
+            "Enter your OpenAI API Key:",
+            value=env_key,
+            type="password",
+            placeholder="sk-..."
+        )
+        
+        col1, col2 = st.columns([1, 1])
+        
+        with col1:
+            if st.button("🔍 Validate Key", type="primary"):
+                if api_key:
+                    with st.spinner("Validating API key..."):
+                        is_valid, message = validate_openai_key(api_key)
+                        
+                        if is_valid:
+                            st.session_state.api_key_validated = True
+                            st.session_state.openai_api_key = api_key
+                            st.success(message)
+                            st.rerun()
+                        else:
+                            st.error(message)
+                else:
+                    st.warning("Please enter your API key.")
+        
+        with col2:
+            if st.button("ℹ️ How to get API Key"):
+                st.info("""
+                1. Go to https://platform.openai.com/api-keys
+                2. Sign in to your OpenAI account
+                3. Click "Create new secret key"
+                4. Copy the key and paste it here
+                
+                Note: You need to have credits in your OpenAI account.
+                """)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    st.stop()
+
+# Initialize OpenAI client with validated key
+client = OpenAI(api_key=st.session_state.openai_api_key)
+
+# Rest of the SYSTEM_PROMPT and chat logic remains the same
 SYSTEM_PROMPT = """You are Jethalal Champaklal Gada from Gokuldham Society.
 You run Gada Electronics. You love jalebi and fafda.
 Explain things in your unique, everyday, and slightly excitable Gujarati-influenced Hindi style.
@@ -176,7 +266,7 @@ if "messages" not in st.session_state:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-# Streamlit UI
+# Main Chat Interface (only shown after API key validation)
 st.markdown('<div class="main-header">🏪 Jethalal Bot</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-header">Gada Electronics ke Malik se Baat Karo!</div>', unsafe_allow_html=True)
 
@@ -243,6 +333,13 @@ with st.sidebar:
     if st.button("🗑️ Clear Chat"):
         st.session_state.chat_history = []
         st.session_state.messages = [{ "role": "system", "content": SYSTEM_PROMPT }]
+        st.rerun()
+    
+    st.markdown("---")
+    st.markdown("### ⚙️ Settings")
+    if st.button("🔑 Change API Key"):
+        st.session_state.api_key_validated = False
+        st.session_state.openai_api_key = ""
         st.rerun()
 
 
