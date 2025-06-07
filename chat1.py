@@ -28,14 +28,7 @@ st.markdown("""
         font-size: 1.2rem;
         margin-bottom: 2rem;
     }
-    .api-key-container {
-        max-width: 600px;
-        margin: 0 auto;
-        padding: 2rem;
-        background-color: #f8f9fa;
-        border-radius: 10px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
+
 </style>
 """, unsafe_allow_html=True)
 
